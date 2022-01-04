@@ -1,23 +1,12 @@
 provider "aws" {
-  region    = var.aws_region
-  version   = "~>2.0"
+  region = "us-east-1"
 }
 
-
-# Uncomment when site is ready to be deployed
-# in the meantime test creation of s3, cloudfront, route53 resources
-module "pipeline" {
-  source = "./pipeline"
-  pipeline_name = var.pipeline_name
-  github_username = var.github_username
-  github_repo = var.github_repo
-  github_token = var.github_token
-}
 
 resource "aws_s3_bucket" "personal_bucket_logs" {
   bucket = "${var.website_name}-logs"
   acl    = "log-delivery-write"
-  region = var.aws_region
+
 
   tags = {
     Name        = "Website logs bucket"
@@ -29,16 +18,15 @@ resource "aws_s3_bucket" "personal_bucket_logs" {
 resource "aws_s3_bucket_public_access_block" "block_public_access_personal_bucket_logs_bucket" {
   bucket = aws_s3_bucket.personal_bucket_logs.id
 
-  block_public_acls   = true
-  block_public_policy = true
-  ignore_public_acls = true
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
   restrict_public_buckets = true
 }
 
 resource "aws_s3_bucket" "website_bucket" {
   bucket = var.website_name
   acl    = "public-read"
-  region = var.aws_region
   policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -71,7 +59,7 @@ EOF
   tags = {
     Name        = "Personal website bucket"
     Environment = "PROD"
-    owner = "cherrera"
+    owner       = "cherrera"
   }
 }
 
@@ -81,6 +69,18 @@ resource "aws_cloudfront_origin_access_identity" "personal_site_origin_access_id
 
 locals {
   s3_origin_id = "s3_cahp_website_bucket"
+}
+
+resource "aws_acm_certificate" "multiDomainWWWCert" {
+  domain_name               = "carlosaherrera.com"
+  subject_alternative_names = ["www.carlosaherrera.com", "carlos4ndresh.com", "www.carlos4ndresh.com"]
+  tags = {
+    Name        = "MultiDomainWWWCert",
+    Env         = "prod"
+    owner       = "cherrera"
+    project     = "personal website"
+    provisioner = "manual"
+  }
 }
 
 resource "aws_cloudfront_distribution" "s3_website_distribution" {
@@ -104,7 +104,7 @@ resource "aws_cloudfront_distribution" "s3_website_distribution" {
     prefix          = "cf_website_logs/"
   }
 
-  aliases = [var.website_name, substr(var.website_name,4,19), var.second_website_name, substr(var.second_website_name,4,22)]
+  aliases = [var.website_name, substr(var.website_name, 4, 19), var.second_website_name, substr(var.second_website_name, 4, 22)]
 
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD"]
@@ -138,8 +138,8 @@ resource "aws_cloudfront_distribution" "s3_website_distribution" {
   }
 
   viewer_certificate {
-    acm_certificate_arn = var.certificate_arn
-    ssl_support_method = "sni-only"
+    acm_certificate_arn = aws_acm_certificate.multiDomainWWWCert.arn
+    ssl_support_method  = "sni-only"
   }
 
   custom_error_response {
@@ -147,46 +147,54 @@ resource "aws_cloudfront_distribution" "s3_website_distribution" {
   }
 }
 
+data "aws_route53_zone" "primary_zone" {
+  zone_id = "Z27610JYC89VRH"
+}
+
+data "aws_route53_zone" "secondary_zone" {
+  zone_id = "Z09310772R60MHKADG4LQ"
+}
+
 resource "aws_route53_record" "www" {
-  zone_id = var.zone_id
+  zone_id = data.aws_route53_zone.primary_zone.id
   name    = var.website_name
   type    = "A"
   alias {
-    name = aws_cloudfront_distribution.s3_website_distribution.domain_name
-    zone_id = aws_cloudfront_distribution.s3_website_distribution.hosted_zone_id
+    name                   = aws_cloudfront_distribution.s3_website_distribution.domain_name
+    zone_id                = aws_cloudfront_distribution.s3_website_distribution.hosted_zone_id
     evaluate_target_health = false
   }
 }
 
 resource "aws_route53_record" "second_www" {
-  zone_id = var.second_domain_zone_id
+  zone_id = data.aws_route53_zone.secondary_zone.id
   name    = var.second_website_name
   type    = "A"
   alias {
-    name = aws_cloudfront_distribution.s3_website_distribution.domain_name
-    zone_id = aws_cloudfront_distribution.s3_website_distribution.hosted_zone_id
+    name                   = aws_cloudfront_distribution.s3_website_distribution.domain_name
+    zone_id                = aws_cloudfront_distribution.s3_website_distribution.hosted_zone_id
     evaluate_target_health = false
   }
 }
 
 resource "aws_route53_record" "second_root" {
-  zone_id = var.second_domain_zone_id
-  name    = substr(var.second_website_name,4,22)
+  zone_id = data.aws_route53_zone.secondary_zone.id
+  name    = substr(var.second_website_name, 4, 22)
   type    = "A"
   alias {
-    name = aws_cloudfront_distribution.s3_website_distribution.domain_name
-    zone_id = aws_cloudfront_distribution.s3_website_distribution.hosted_zone_id
+    name                   = aws_cloudfront_distribution.s3_website_distribution.domain_name
+    zone_id                = aws_cloudfront_distribution.s3_website_distribution.hosted_zone_id
     evaluate_target_health = false
   }
 }
 
 resource "aws_route53_record" "root_www" {
-  zone_id = var.zone_id
-  name    = substr(var.website_name,4,19)
+  zone_id = data.aws_route53_zone.primary_zone.id
+  name    = substr(var.website_name, 4, 19)
   type    = "A"
   alias {
-    name = aws_cloudfront_distribution.s3_website_distribution.domain_name
-    zone_id = aws_cloudfront_distribution.s3_website_distribution.hosted_zone_id
+    name                   = aws_cloudfront_distribution.s3_website_distribution.domain_name
+    zone_id                = aws_cloudfront_distribution.s3_website_distribution.hosted_zone_id
     evaluate_target_health = false
   }
 }
