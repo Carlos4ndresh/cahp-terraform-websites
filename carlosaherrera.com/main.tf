@@ -1,5 +1,13 @@
 provider "aws" {
   region = "us-east-1"
+  default_tags {
+    tags = {
+      Env         = "prod"
+      owner       = "cherrera"
+      project     = "personal website"
+      provisioner = "Terraform"
+    }
+  }
 }
 
 
@@ -79,7 +87,7 @@ resource "aws_acm_certificate" "multiDomainWWWCert" {
     Env         = "prod"
     owner       = "cherrera"
     project     = "personal website"
-    provisioner = "manual"
+    provisioner = "Terraform"
   }
 }
 
