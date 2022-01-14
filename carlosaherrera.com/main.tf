@@ -34,7 +34,7 @@ resource "aws_s3_bucket_public_access_block" "block_public_access_personal_bucke
 
 resource "aws_s3_bucket" "website_bucket" {
   bucket = var.website_name
-  acl    = "public-read"
+  acl    = "private"
   policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -69,6 +69,14 @@ EOF
     Environment = "PROD"
     owner       = "cherrera"
   }
+}
+
+resource "aws_s3_bucket_public_access_block" "block_public_access_website_bucket" {
+  bucket                  = aws_s3_bucket.website_bucket.id
+  block_public_acls       = true
+  block_public_policy     = true
+  restrict_public_buckets = true
+  ignore_public_acls      = true
 }
 
 resource "aws_ssm_parameter" "cahp_site_bucket" {
