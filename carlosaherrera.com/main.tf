@@ -71,6 +71,12 @@ EOF
   }
 }
 
+resource "aws_ssm_parameter" "cahp_site_bucket" {
+  name  = "/production/websites/carlosaherrera.com/bucket_name"
+  type  = "String"
+  value = aws_s3_bucket.website_bucket.arn
+}
+
 resource "aws_cloudfront_origin_access_identity" "personal_site_origin_access_identity" {
   comment = "The OAI for the website"
 }
