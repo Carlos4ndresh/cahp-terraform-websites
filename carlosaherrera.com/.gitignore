@@ -1,0 +1,8 @@
+# Compiled Go binary
+carlosaherrera.com
+
+# Pulumi local state (using Pulumi Cloud, but ignore if ever switched)
+.pulumi/
+
+# OS
+.DS_Store
